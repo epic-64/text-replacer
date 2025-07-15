@@ -69,6 +69,7 @@ impl App {
             (KeyCode::F(2), _) => self.copy_text_from_clipboard(),
             (KeyCode::F(3), _) => Ok(self.remove_extra_spaces()),
             (KeyCode::F(4), _) => self.copy_text_to_clipboard(),
+            (KeyCode::F(5), _) => Ok(self.clear_text()),
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => Ok(self.request_exit()),
             _ => Ok(())
         };
@@ -82,26 +83,26 @@ impl App {
     }
 
     fn request_exit(&mut self) {
+        self.last_error = Some("Exiting...".to_string());
         self.exit = true;
     }
 }
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        // draw the main block
-        Block::default().title("Clipboard Viewer").borders(Borders::ALL).render(area, buf);
+        let [instructions, textbox, last_key, last_error] = Layout::vertical([
+            Constraint::Length(3), // instructions
+            Constraint::Min(5),    // text box
+            Constraint::Length(3), // last key
+            Constraint::Length(3), // error (optional)
+        ]).margin(1).areas(area);
 
         // draw the instructions
-        Paragraph::new("Press F2 to paste from clipboard, F3 to copy current buffer to clipboard, Enter to remove extra spaces.")
-            .wrap(Wrap { trim: false })
-            .render(area.inner(Margin { vertical: 1, horizontal: 1 }), buf);
+        let text = "<F2> paste | <F3> remove extra spaces | <F4> copy to clipboard | <F5> clear text | <CTRL+c> exit";
+        Paragraph::new(text).render(instructions, buf);
 
         // draw the text from the clipboard
-        let area = area;
-        Paragraph::new(self.text.as_str())
-            .block(Block::default().title("Clipboard Viewer").borders(Borders::ALL))
-            .wrap(Wrap { trim: false })
-            .render(area.inner(Margin { vertical: 1, horizontal: 1 }), buf);
+        Paragraph::new(self.text.as_str()).wrap(Wrap { trim: false }).render(textbox, buf);
 
         // draw the last pressed key
         if let Some(key) = self.last_pressed_key {
@@ -110,7 +111,15 @@ impl Widget for &App {
             Paragraph::new(key_info)
                 .block(Block::default().title("Last Key").borders(Borders::ALL))
                 .wrap(Wrap { trim: false })
-                .render(area.inner(Margin { vertical: 1, horizontal: 1 }), buf);
+                .render(last_key, buf);
+        }
+
+        // draw the last error message if it exists
+        if let Some(ref error) = self.last_error {
+            Paragraph::new(error.as_str())
+                .block(Block::default().title("Last Error").borders(Borders::ALL))
+                .wrap(Wrap { trim: false })
+                .render(last_error, buf);
         }
     }
 }
