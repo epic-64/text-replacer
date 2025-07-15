@@ -9,6 +9,7 @@ struct App {
     pub text: String,
     pub last_pressed_key: Option<KeyEvent>,
     pub last_error: Option<String>,
+    clipboard: Option<Clipboard>,
 }
 
 // The basic application structure. Does not change. Can be copy-pasted into any application.
@@ -48,8 +49,11 @@ impl App {
     }
 
     fn copy_text_to_clipboard(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let mut clipboard = Clipboard::new()?;
-        clipboard.set_text(self.text.clone())?;
+        if let Some(clipboard) = &mut self.clipboard {
+            clipboard.set_text(self.text.clone())?;
+        } else {
+            return Err("Clipboard unavailable".into());
+        }
         Ok(())
     }
 
@@ -126,7 +130,9 @@ impl Widget for &App {
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut terminal = ratatui::init();
-    App::default().run(&mut terminal)?;
+    let mut app = App::default();
+    app.clipboard = Clipboard::new().ok();
+    app.run(&mut terminal)?;
     ratatui::restore();
     Ok(())
 }
