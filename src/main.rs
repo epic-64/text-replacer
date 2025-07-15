@@ -127,10 +127,14 @@ impl Widget for &App {
 
         // draw the instructions
         let text = "<F2> paste | <F3> remove extra spaces | <F4> copy to clipboard | <F5> clear text | <CTRL+c> exit";
-        Paragraph::new(text).render(instructions, buf);
+        Paragraph::new(text)
+            .block(Block::default().title("Keybinds").borders(Borders::ALL))
+            .render(instructions, buf);
 
         // draw the text from the clipboard
-        Paragraph::new(self.text.as_str()).wrap(Wrap { trim: false }).render(textbox, buf);
+        Paragraph::new(self.text.as_str())
+            .block(Block::default().title("Text Box (press F2 to paste)").borders(Borders::ALL))
+            .wrap(Wrap { trim: false }).render(textbox, buf);
 
         // draw the last pressed key
         if let Some(key) = self.last_pressed_key {
