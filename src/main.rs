@@ -4,11 +4,24 @@ use ratatui::{prelude::*, widgets::{Block, Borders, Paragraph, Wrap}, DefaultTer
 use regex::Regex;
 
 enum Action {
-    CopyFromClipboard,
+    PasteFromClipboard,
     RemoveExtraSpaces,
     CopyToClipboard,
     ClearText,
     Exit,
+}
+
+impl Action {
+    /// Returns a string representation of the action for display purposes.
+    fn as_str(&self) -> &str {
+        match self {
+            Action::PasteFromClipboard => "Pasted text from clipboard",
+            Action::RemoveExtraSpaces => "Removed extra spaces",
+            Action::CopyToClipboard => "Copied text to clipboard",
+            Action::ClearText => "Cleared text",
+            Action::Exit => "Exiting application",
+        }
+    }
 }
 
 #[derive(Default)]
@@ -80,7 +93,7 @@ impl App {
 
         let result = match (key_event.code, key_event.modifiers) {
             (KeyCode::F(2), _) => {
-                self.last_action = Some(Action::CopyFromClipboard);
+                self.last_action = Some(Action::PasteFromClipboard);
                 self.copy_text_from_clipboard()
             },
             (KeyCode::F(3), _) => {
@@ -118,12 +131,17 @@ impl App {
 
 impl Widget for &App {
     fn render(self, area: Rect, buf: &mut Buffer) {
-        let [instructions, textbox, last_key, last_error] = Layout::vertical([
+        let [instructions, textbox, audit_log, last_error] = Layout::vertical([
             Constraint::Length(3), // instructions
             Constraint::Min(5),    // text box
-            Constraint::Length(3), // last key
+            Constraint::Length(3), // last action
             Constraint::Length(3), // error (optional)
         ]).margin(1).areas(area);
+
+        let [last_key, last_action] = Layout::horizontal([
+            Constraint::Percentage(50),
+            Constraint::Percentage(50),
+        ]).areas(audit_log);
 
         // draw the instructions
         let text = "<F2> paste | <F3> remove extra spaces | <F4> copy to clipboard | <F5> clear text | <CTRL+c> exit";
@@ -137,21 +155,31 @@ impl Widget for &App {
             .wrap(Wrap { trim: false }).render(textbox, buf);
 
         // draw the last pressed key
+        Block::bordered().title("Last Key").render(last_key, buf);
         if let Some(key) = self.last_pressed_key {
             let key_info = format!("Last pressed key: {:?}", key);
 
             Paragraph::new(key_info)
-                .block(Block::default().title("Last Key").borders(Borders::ALL))
                 .wrap(Wrap { trim: false })
-                .render(last_key, buf);
+                .render(last_key.inner(Margin::new(1,1)), buf);
+        }
+
+        // draw the last action taken
+        Block::bordered().title("Last Action").render(last_action, buf);
+        if let Some(action) = &self.last_action {
+            let action_info = action.as_str();
+
+            Paragraph::new(action_info)
+                .wrap(Wrap { trim: false })
+                .render(last_action.inner(Margin::new(1, 1)), buf);
         }
 
         // draw the last error message if it exists
+        Block::bordered().title("Last Error").render(last_error, buf);
         if let Some(ref error) = self.last_error {
             Paragraph::new(error.as_str())
-                .block(Block::default().title("Last Error").borders(Borders::ALL))
                 .wrap(Wrap { trim: false })
-                .render(last_error, buf);
+                .render(last_error.inner(Margin::new(1, 1)), buf);
         }
     }
 }
