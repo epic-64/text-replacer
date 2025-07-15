@@ -1,11 +1,6 @@
-use std::io;
-use crossterm::{
-    event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode, KeyModifiers, KeyEvent, KeyEventKind},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
-use ratatui::{prelude::*, widgets::{Block, Borders, Paragraph, Wrap}, DefaultTerminal};
 use arboard::Clipboard;
+use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
+use ratatui::{prelude::*, widgets::{Block, Borders, Paragraph, Wrap}, DefaultTerminal};
 use regex::Regex;
 
 #[derive(Default)]
@@ -15,9 +10,10 @@ struct App {
     pub last_pressed_key: Option<KeyEvent>,
 }
 
+// The basic application structure. Does not change. Can be copy-pasted into any application.
 impl App {
     /// runs the application's main loop until the user quits
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>> {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
@@ -30,17 +26,19 @@ impl App {
     }
 
     /// updates the application's state based on user input
-    fn handle_events(&mut self) -> io::Result<()> {
-        let _ = match event::read()? {
+    fn handle_events(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        match event::read()? {
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
+                self.on_key_pressed(key_event)
             }
             _ => Ok(()),
-        };
-        Ok(())
+        }
     }
+}
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
+// The user logic for the application.
+impl App {
+    fn on_key_pressed(&mut self, key_event: KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
         self.last_pressed_key = Some(key_event);
 
         match (key_event.code, key_event.modifiers) {
