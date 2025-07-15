@@ -8,6 +8,7 @@ struct App {
     exit: bool,
     pub text: String,
     pub last_pressed_key: Option<KeyEvent>,
+    pub last_error: Option<String>,
 }
 
 // The basic application structure. Does not change. Can be copy-pasted into any application.
@@ -38,33 +39,46 @@ impl App {
 
 // The user logic for the application.
 impl App {
+    fn copy_text_from_clipboard(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut clipboard = Clipboard::new()?;
+        if let Ok(clip_text) = clipboard.get_text() {
+            self.text = clip_text;
+        }
+        Ok(())
+    }
+
+    fn copy_text_to_clipboard(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let mut clipboard = Clipboard::new()?;
+        clipboard.set_text(self.text.clone())?;
+        Ok(())
+    }
+
+    fn remove_extra_spaces(&mut self) {
+        let re = Regex::new(r"\s+").unwrap();
+        self.text = re.replace_all(&self.text, " ").to_string();
+    }
+
+    fn clear_text(&mut self) {
+        self.text.clear();
+    }
+
     fn on_key_pressed(&mut self, key_event: KeyEvent) -> Result<(), Box<dyn std::error::Error>> {
         self.last_pressed_key = Some(key_event);
 
-        match (key_event.code, key_event.modifiers) {
-            (KeyCode::F(2), _) => {
-                // Paste from clipboard
-                let mut clipboard = Clipboard::new()?;
-                if let Ok(clip_text) = clipboard.get_text() {
-                    self.text = clip_text;
-                }
-            }
-            (KeyCode::F(3), _) => {
-                // Copy current buffer to clipboard
-                let mut clipboard = Clipboard::new()?;
-                clipboard.set_text(self.text.clone())?;
-            }
-            (KeyCode::Enter, _) => {
-                let re = Regex::new(r"\s+").unwrap();
-                self.text = re.replace_all(&self.text, " ").to_string();
-            }
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
-                self.request_exit();
-            }
-            _ => {}
+        let result = match (key_event.code, key_event.modifiers) {
+            (KeyCode::F(2), _) => self.copy_text_from_clipboard(),
+            (KeyCode::F(3), _) => Ok(self.remove_extra_spaces()),
+            (KeyCode::F(4), _) => self.copy_text_to_clipboard(),
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => Ok(self.request_exit()),
+            _ => Ok(())
+        };
+
+        // store the last error message if it occurred
+        if let Err(ref e) = result {
+            self.last_error = Some(e.to_string());
         }
 
-        Ok(())
+        result
     }
 
     fn request_exit(&mut self) {
