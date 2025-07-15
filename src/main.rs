@@ -3,13 +3,22 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use ratatui::{prelude::*, widgets::{Block, Borders, Paragraph, Wrap}, DefaultTerminal};
 use regex::Regex;
 
+enum Action {
+    CopyFromClipboard,
+    RemoveExtraSpaces,
+    CopyToClipboard,
+    ClearText,
+    Exit,
+}
+
 #[derive(Default)]
 struct App {
     exit: bool,
+    clipboard: Option<Clipboard>,
     pub text: String,
     pub last_pressed_key: Option<KeyEvent>,
     pub last_error: Option<String>,
-    clipboard: Option<Clipboard>,
+    pub last_action: Option<Action>,
 }
 
 // The basic application structure. Does not change. Can be copy-pasted into any application.
@@ -70,11 +79,26 @@ impl App {
         self.last_pressed_key = Some(key_event);
 
         let result = match (key_event.code, key_event.modifiers) {
-            (KeyCode::F(2), _) => self.copy_text_from_clipboard(),
-            (KeyCode::F(3), _) => Ok(self.remove_extra_spaces()),
-            (KeyCode::F(4), _) => self.copy_text_to_clipboard(),
-            (KeyCode::F(5), _) => Ok(self.clear_text()),
-            (KeyCode::Char('c'), KeyModifiers::CONTROL) => Ok(self.request_exit()),
+            (KeyCode::F(2), _) => {
+                self.last_action = Some(Action::CopyFromClipboard);
+                self.copy_text_from_clipboard()
+            },
+            (KeyCode::F(3), _) => {
+                self.last_action = Some(Action::RemoveExtraSpaces);
+                Ok(self.remove_extra_spaces())
+            },
+            (KeyCode::F(4), _) => {
+                self.last_action = Some(Action::CopyToClipboard);
+                self.copy_text_to_clipboard()
+            },
+            (KeyCode::F(5), _) => {
+                self.last_action = Some(Action::ClearText);
+                Ok(self.clear_text())
+            },
+            (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
+                self.last_action = Some(Action::Exit);
+                Ok(self.request_exit())
+            },
             _ => Ok(())
         };
 
