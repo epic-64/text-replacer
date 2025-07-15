@@ -3,6 +3,21 @@ use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifier
 use ratatui::{prelude::*, widgets::{Block, Borders, Paragraph, Wrap}, DefaultTerminal};
 use regex::Regex;
 
+trait NiceKeyEvent {
+    /// Returns a string representation of the key event for display purposes.
+    fn to_nice_string(&self) -> String;
+}
+
+impl NiceKeyEvent for KeyEvent {
+    fn to_nice_string(&self) -> String {
+        if self.modifiers.is_empty() {
+            format!("{}", self.code)
+        } else {
+            format!("{} + {}", self.modifiers.to_string(), self.code)
+        }
+    }
+}
+
 enum Action {
     PasteFromClipboard,
     RemoveExtraSpaces,
@@ -136,15 +151,15 @@ impl Widget for &App {
             Constraint::Min(5),    // text box
             Constraint::Length(3), // last action
             Constraint::Length(3), // error (optional)
-        ]).margin(1).areas(area);
+        ]).vertical_margin(0).horizontal_margin(1).areas(area);
 
         let [last_key, last_action] = Layout::horizontal([
-            Constraint::Percentage(50),
-            Constraint::Percentage(50),
+            Constraint::Length(20),
+            Constraint::Fill(10),
         ]).areas(audit_log);
 
         // draw the instructions
-        let text = "<F2> paste | <F3> remove extra spaces | <F4> copy to clipboard | <F5> clear text | <CTRL+c> exit";
+        let text = "<F2> paste | <F3> remove space | <F4> copy to clipboard | <F5> clear text | <CTRL+c> exit";
         Paragraph::new(text)
             .block(Block::default().title("Keybinds").borders(Borders::ALL))
             .render(instructions, buf);
@@ -157,9 +172,7 @@ impl Widget for &App {
         // draw the last pressed key
         Block::bordered().title("Last Key").render(last_key, buf);
         if let Some(key) = self.last_pressed_key {
-            let key_info = format!("Last pressed key: {:?}", key);
-
-            Paragraph::new(key_info)
+            Paragraph::new(key.to_nice_string())
                 .wrap(Wrap { trim: false })
                 .render(last_key.inner(Margin::new(1,1)), buf);
         }
