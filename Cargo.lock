@@ -481,6 +481,7 @@ version = "0.1.0"
 dependencies = [
  "arboard",
  "crossterm 0.29.0",
+ "indoc",
  "ratatui",
  "regex",
 ]
