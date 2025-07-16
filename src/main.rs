@@ -115,8 +115,7 @@ impl App {
                 self.last_action = Some(Action::QuickFix);
                 self.paste_text_from_clipboard()?;
                 self.remove_extra_spaces();
-                self.copy_text_to_clipboard()?;
-                Ok(())
+                self.copy_text_to_clipboard()
             },
             (KeyCode::F(2), _) => {
                 self.last_action = Some(Action::PasteFromClipboard);
@@ -124,7 +123,8 @@ impl App {
             },
             (KeyCode::F(3), _) => {
                 self.last_action = Some(Action::RemoveExtraSpaces);
-                Ok(self.remove_extra_spaces())
+                self.remove_extra_spaces();
+                Ok(())
             },
             (KeyCode::F(4), _) => {
                 self.last_action = Some(Action::CopyToClipboard);
@@ -132,25 +132,28 @@ impl App {
             },
             (KeyCode::F(5), _) => {
                 self.last_action = Some(Action::ClearText);
-                Ok(self.clear_text())
+                self.clear_text();
+                Ok(())
             },
             (KeyCode::Char('c'), KeyModifiers::CONTROL) => {
                 self.last_action = Some(Action::Exit);
-                Ok(self.request_exit())
+                self.request_exit();
+                Ok(())
             },
             _ => Ok(())
         };
 
         // store the last error message if it occurred
         if let Err(ref e) = result {
-            self.last_error = Some(e.to_string());
+            let date = chrono::Local::now();
+            let pretty_date = date.format("%Y-%m-%d %H:%M:%S").to_string();
+            self.last_error = Some(format!("{}: {}", pretty_date, e.to_string()));
         }
 
         result
     }
 
     fn request_exit(&mut self) {
-        self.last_error = Some("Exiting...".to_string());
         self.exit = true;
     }
 }
